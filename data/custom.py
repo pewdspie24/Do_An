@@ -18,8 +18,8 @@ class DatasetCustom(Dataset):
         self.shot = shot
         self.use_original_imgsize = use_original_imgsize
 
-        self.img_path = os.path.join(datapath, 'my_data/image/')
-        self.ann_path = os.path.join(datapath, 'my_data/mask/')
+        self.img_path = os.path.join(datapath, 'image/')
+        self.ann_path = os.path.join(datapath, 'mask/')
         self.transform = transform
 
         self.class_ids = self.build_class_ids()
@@ -105,22 +105,23 @@ class DatasetCustom(Dataset):
         return query_name, support_names, class_sample
 
     def build_class_ids(self):
-        nclass_trn = self.nclass // self.nfolds
-        class_ids_val = [self.fold * nclass_trn + i for i in range(nclass_trn)]
-        class_ids_trn = [x for x in range(self.nclass) if x not in class_ids_val]
-
+        # nclass_trn = self.nclass // self.nfolds
+        # class_ids_val = [self.fold * nclass_trn + i for i in range(nclass_trn)]
+        # class_ids_trn = [x for x in range(self.nclass) if x not in class_ids_val]
+        # print('train:', class_ids_trn)
+        # print('valid:', class_ids_val)
         if self.split == 'trn':
-            return class_ids_trn
+            return [0, 1, 3]
         else:
-            return class_ids_val
+            return [2]
 
     def build_img_metadata(self):
 
         def read_metadata(split, fold_id):
-            fold_n_metadata = os.path.join('data/splits/pascal/%s/fold%d.txt' % (split, fold_id))
+            fold_n_metadata = os.path.join('data/splits/custom/%s/fold%d.txt' % (split, fold_id))
             with open(fold_n_metadata, 'r') as f:
                 fold_n_metadata = f.read().split('\n')[:-1]
-            fold_n_metadata = [[data.split('__')[0], int(data.split('__')[1]) - 1] for data in fold_n_metadata]
+            fold_n_metadata = [[data.split(' ')[0], int(data.split(' ')[1]) - 1] for data in fold_n_metadata]
             return fold_n_metadata
 
         img_metadata = []
