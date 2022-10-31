@@ -32,10 +32,12 @@ class DatasetPASCAL(Dataset):
     def __getitem__(self, idx):
         idx %= len(self.img_metadata)  # for testing, as n_images < 1000
         query_name, support_names, class_sample = self.sample_episode(idx)
+        print('D ', support_names)
         query_img, query_cmask, support_imgs, support_cmasks, org_qry_imsize = self.load_frame(query_name, support_names)
 
         query_img = self.transform(query_img)
         if not self.use_original_imgsize:
+            print('Query', query_cmask.shape)
             query_cmask = F.interpolate(query_cmask.unsqueeze(0).unsqueeze(0).float(), query_img.size()[-2:], mode='nearest').squeeze()
         query_mask, query_ignore_idx = self.extract_ignore_idx(query_cmask.float(), class_sample)
 
@@ -44,6 +46,7 @@ class DatasetPASCAL(Dataset):
         support_masks = []
         support_ignore_idxs = []
         for scmask in support_cmasks:
+            print('Support', scmask.shape)
             scmask = F.interpolate(scmask.unsqueeze(0).unsqueeze(0).float(), support_imgs.size()[-2:], mode='nearest').squeeze()
             support_mask, support_ignore_idx = self.extract_ignore_idx(scmask, class_sample)
             support_masks.append(support_mask)

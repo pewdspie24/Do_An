@@ -13,13 +13,13 @@ class DatasetCustom(Dataset):
         self.split = 'val' if split in ['val', 'test'] else 'trn'
         self.fold = fold
         self.nfolds = 4
-        self.nclass = 4
+        self.nclass = 5
         self.benchmark = 'custom'
         self.shot = shot
         self.use_original_imgsize = use_original_imgsize
 
-        self.img_path = os.path.join(datapath, 'image/')
-        self.ann_path = os.path.join(datapath, 'mask/')
+        self.img_path = os.path.join(datapath, 'my_data/img/')
+        self.ann_path = os.path.join(datapath, 'my_data/mask/')
         self.transform = transform
 
         self.class_ids = self.build_class_ids()
@@ -32,18 +32,34 @@ class DatasetCustom(Dataset):
     def __getitem__(self, idx):
         idx %= len(self.img_metadata)  # for testing, as n_images < 1000
         query_name, support_names, class_sample = self.sample_episode(idx)
+        # print('D ', support_names)
+        # print('Que-name', query_name)
         query_img, query_cmask, support_imgs, support_cmasks, org_qry_imsize = self.load_frame(query_name, support_names)
-
+        # print('Que-cmask', query_cmask.shape)
+        # print('Pre-que', query_img.size)
         query_img = self.transform(query_img)
+        # print('Aft-que', query_img.shape)
         if not self.use_original_imgsize:
-            query_cmask = F.interpolate(query_cmask.unsqueeze(0).unsqueeze(0).float(), query_img.size()[-2:], mode='nearest').squeeze()
+            try:
+                query_cmask = F.interpolate(query_cmask.unsqueeze(0).unsqueeze(0).float(), query_img.size()[-2:], mode='nearest').squeeze()
+            except Exception as e:
+                print('Que-name', query_name)
+                print('Que-cmask', query_cmask.shape)
+                print('Aft-que', query_img.shape)
+                print(e)
         query_mask, query_ignore_idx = self.extract_ignore_idx(query_cmask.float(), class_sample)
-
+        # for idx, support_img in enumerate(support_imgs):
+        #     print(support_img.size)
+        #     print(np.array(support_img).shape)
+        #     print(support_names[idx])
+        #     print(np.array(support_imgs[idx]).shape)
+        # print("\n\n\n\n\n\n")
         support_imgs = torch.stack([self.transform(support_img) for support_img in support_imgs])
 
         support_masks = []
         support_ignore_idxs = []
         for scmask in support_cmasks:
+            # print('Support', scmask.shape)
             scmask = F.interpolate(scmask.unsqueeze(0).unsqueeze(0).float(), support_imgs.size()[-2:], mode='nearest').squeeze()
             support_mask, support_ignore_idx = self.extract_ignore_idx(scmask, class_sample)
             support_masks.append(support_mask)
@@ -91,7 +107,10 @@ class DatasetCustom(Dataset):
 
     def read_img(self, img_name):
         r"""Return RGB image in PIL Image"""
-        return Image.open(os.path.join(self.img_path, img_name) + '.jpg')
+        try:
+            return Image.open(os.path.join(self.img_path, img_name) + '.jpg').convert('RGB')
+        except Exception:
+                return Image.open(os.path.join(self.img_path, img_name) + '.jpeg').convert('RGB')
 
     def sample_episode(self, idx):
         query_name, class_sample = self.img_metadata[idx]

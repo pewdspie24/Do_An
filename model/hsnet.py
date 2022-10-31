@@ -5,6 +5,7 @@ from operator import add
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torchsummary import summary 
 from torchvision.models import resnet
 from torchvision.models import vgg
 
@@ -35,22 +36,36 @@ class HypercorrSqueezeNetwork(nn.Module):
             self.feat_ids = list(range(4, 34))
             self.extract_feats = extract_feat_res
             nbottlenecks = [3, 4, 23, 3]
+        elif backbone == 'resnet101_custom':
+            self.backbone = resnet.resnet101()
+            self.backbone.fc = nn.Linear(self.backbone.fc.in_features, 38)
+            self.backbone.load_state_dict(torch.load("weights/best_state_dict.pth"))
+            INPUT_SHAPE = (3, 400, 400)
+            print(summary(self.backbone.cuda(), (INPUT_SHAPE)))
+            self.feat_ids = list(range(4, 34))
+            self.extract_feats = extract_feat_res
+            nbottlenecks = [3, 4, 23, 3]
         else:
             raise Exception('Unavailable backbone: %s' % backbone)
 
         self.bottleneck_ids = reduce(add, list(map(lambda x: list(range(x)), nbottlenecks)))
         self.lids = reduce(add, [[i + 1] * x for i, x in enumerate(nbottlenecks)])
         self.stack_ids = torch.tensor(self.lids).bincount().__reversed__().cumsum(dim=0)[:3]
-        self.backbone.eval()
+        # self.backbone.eval()
         self.hpn_learner = HPNLearner(list(reversed(nbottlenecks[-3:])))
         self.cross_entropy_loss = nn.CrossEntropyLoss()
 
     def forward(self, query_img, support_img, support_mask):
-        with torch.no_grad():
-            query_feats = self.extract_feats(query_img, self.backbone, self.feat_ids, self.bottleneck_ids, self.lids)
-            support_feats = self.extract_feats(support_img, self.backbone, self.feat_ids, self.bottleneck_ids, self.lids)
-            support_feats = self.mask_feature(support_feats, support_mask.clone())
-            corr = Correlation.multilayer_correlation(query_feats, support_feats, self.stack_ids)
+        # with torch.no_grad():
+        #     query_feats = self.extract_feats(query_img, self.backbone, self.feat_ids, self.bottleneck_ids, self.lids)
+        #     support_feats = self.extract_feats(support_img, self.backbone, self.feat_ids, self.bottleneck_ids, self.lids)
+        #     support_feats = self.mask_feature(support_feats, support_mask.clone())
+        #     corr = Correlation.multilayer_correlation(query_feats, support_feats, self.stack_ids)
+
+        query_feats = self.extract_feats(query_img, self.backbone, self.feat_ids, self.bottleneck_ids, self.lids)
+        support_feats = self.extract_feats(support_img, self.backbone, self.feat_ids, self.bottleneck_ids, self.lids)
+        support_feats = self.mask_feature(support_feats, support_mask.clone())
+        corr = Correlation.multilayer_correlation(query_feats, support_feats, self.stack_ids)
 
         logit_mask = self.hpn_learner(corr)
         if not self.use_original_imgsize:

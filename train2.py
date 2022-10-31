@@ -53,7 +53,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Hypercorrelation Squeeze Pytorch Implementation')
     parser.add_argument('--datapath', type=str, default='../Datasets_HSN')
     parser.add_argument('--benchmark', type=str, default='custom', choices=['pascal', 'coco', 'fss', 'custom'])
-    parser.add_argument('--logpath', type=str, default='newdata_oldweight_1')
+    parser.add_argument('--logpath', type=str, default='newdata_oldweight_2')
     parser.add_argument('--bsz', type=int, default=4)
     parser.add_argument('--lr', type=float, default=1e-3)
     parser.add_argument('--niter', type=int, default=2000)
@@ -88,9 +88,9 @@ if __name__ == '__main__':
     best_val_loss = float('inf')
     for epoch in range(args.niter):
 
-        trn_loss, trn_miou, trn_fb_iou = train(epoch, model, dataloader_trn, optimizer, training=True)
+        trn_loss, trn_miou, trn_fb_iou = train(epoch, model, dataloader_trn, new_optimizer, training=True)
         with torch.no_grad():
-            val_loss, val_miou, val_fb_iou = train(epoch, model, dataloader_val, optimizer, training=False)
+            val_loss, val_miou, val_fb_iou = train(epoch, model, dataloader_val, new_optimizer, training=False)
 
         # Save the best model
         if val_miou > best_val_miou:

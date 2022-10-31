@@ -3,3 +3,4 @@
 2 BrownSpot
 3 LeafBlast
 4 BacterialBlight
+5 Hispa

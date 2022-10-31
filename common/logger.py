@@ -5,7 +5,7 @@ import os
 
 from tensorboardX import SummaryWriter
 import torch
-
+import numpy as np
 
 class AverageMeter:
     r""" Stores loss, evaluation results """
@@ -20,6 +20,8 @@ class AverageMeter:
             self.nclass = 80
         elif self.benchmark == 'fss':
             self.nclass = 1000
+        elif self.benchmark == 'custom':
+            self.nclass = 5
 
         self.intersection_buf = torch.zeros([2, self.nclass]).float().cuda()
         self.union_buf = torch.zeros([2, self.nclass]).float().cuda()
@@ -81,7 +83,7 @@ class Logger:
 
         cls.logpath = os.path.join('logs', logpath + '.log')
         cls.benchmark = args.benchmark
-        os.makedirs(cls.logpath)
+        os.makedirs(cls.logpath, exist_ok=True)
 
         logging.basicConfig(filemode='w',
                             filename=os.path.join(cls.logpath, 'log.txt'),
@@ -114,6 +116,10 @@ class Logger:
     def save_model_miou(cls, model, epoch, val_miou):
         torch.save(model.state_dict(), os.path.join(cls.logpath, 'best_model.pt'))
         cls.info('Model saved @%d w/ val. mIoU: %5.2f.\n' % (epoch, val_miou))
+    
+    @classmethod
+    def save_model_event(cls, model, epoch, val_miou):
+        torch.save(model.state_dict(), os.path.join(cls.logpath, 'best_model_epoch'+str(epoch)+'_miou'+np.array2string(val_miou.cpu().detach().numpy())+'.pt'))
 
     @classmethod
     def log_params(cls, model):
