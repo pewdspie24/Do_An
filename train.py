@@ -11,8 +11,37 @@ from common.evaluation import Evaluator
 from common import utils
 from data.dataset import FSSDataset
 
+def train_mask_nshot(model, query_img, support_img, support_mask, shot):
+    logit_mask_agg = 0
+    predict_mask_agg = 0
+    for s_idx in range(shot):
+        # print(support_img.shape)
+        logit_mask = model(query_img, support_img[:, s_idx], support_mask[:, s_idx])
+        # print(logit_mask.shape)
+        # if self.use_original_imgsize:
+        #     org_qry_imsize = tuple([batch['org_query_imsize'][1].item(), batch['org_query_imsize'][0].item()])
+        #     logit_mask = F.interpolate(logit_mask, org_qry_imsize, mode='bilinear', align_corners=True)
 
-def train(epoch, model, dataloader, optimizer, training):
+        logit_mask_agg += logit_mask.clone()
+        predict_mask_agg += logit_mask.argmax(dim=1).clone()
+        if shot == 1: return (logit_mask_agg, predict_mask_agg)
+
+    # Average & quantize predictions given threshold (=0.5)
+    bsz = predict_mask_agg.size(0)
+    max_vote = predict_mask_agg.view(bsz, -1).max(dim=1)[0]
+    # print("max_vote1", predict_mask_agg.view(bsz, -1).shape)
+    max_vote = torch.stack([max_vote, torch.ones_like(max_vote).long()])
+    # print("max_vote2", max_vote.shape)
+    max_vote = max_vote.max(dim=0)[0].view(bsz, 1, 1)
+    # print("max_vote3", max_vote.shape)
+    pred_mask = predict_mask_agg.float() / max_vote
+    pred_mask[pred_mask < 0.5] = 0
+    pred_mask[pred_mask >= 0.5] = 1
+    logit_mask = logit_mask_agg / shot
+
+    return logit_mask, pred_mask
+
+def train(epoch, model, dataloader, optimizer, training, shot):
     r""" Train HSNet """
 
     # Force randomness during training / freeze randomness during testing
@@ -24,11 +53,20 @@ def train(epoch, model, dataloader, optimizer, training):
 
         # 1. Hypercorrelation Squeeze Networks forward pass
         batch = utils.to_cuda(batch)
-        logit_mask = model(batch['query_img'], batch['support_imgs'].squeeze(1), batch['support_masks'].squeeze(1))
-        pred_mask = logit_mask.argmax(dim=1)
+        # print(batch['support_masks'].shape)
+        # logit_mask = model(batch['query_img'], batch['support_imgs'].squeeze(1), batch['support_masks'].squeeze(1), shot)
+        # pred_mask = logit_mask.argmax(dim=1)
+        query_img = batch['query_img']
+        support_img = batch['support_imgs']
+        support_mask = batch['support_masks']
+
+        logit_mask, pred_mask = train_mask_nshot(model, query_img, support_img, support_mask, shot)
+
+        # pred_mask = train_mask_nshot(model, query_img, support_img, support_mask, shot)
 
         # 2. Compute loss & update model parameters
         loss = model.module.compute_objective(logit_mask, batch['query_mask'])
+        # loss = model.module.compute_objective(logit_mask, batch['query_mask'])
         if training:
             optimizer.zero_grad()
             loss.backward()
@@ -53,13 +91,14 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Hypercorrelation Squeeze Pytorch Implementation')
     parser.add_argument('--datapath', type=str, default='../Datasets_HSN')
     parser.add_argument('--benchmark', type=str, default='custom', choices=['pascal', 'coco', 'fss', 'custom'])
-    parser.add_argument('--logpath', type=str, default='newdata_oldweight_1')
-    parser.add_argument('--bsz', type=int, default=4)
+    parser.add_argument('--logpath', type=str, default='newD_newW_trans_5shot')
+    parser.add_argument('--bsz', type=int, default=2)
     parser.add_argument('--lr', type=float, default=1e-3)
     parser.add_argument('--niter', type=int, default=2000)
     parser.add_argument('--nworker', type=int, default=8)
+    parser.add_argument('--nwshot', type=int, default=3)
     parser.add_argument('--fold', type=int, default=0, choices=[0, 1, 2, 3])
-    parser.add_argument('--backbone', type=str, default='resnet101', choices=['vgg16', 'resnet50', 'resnet101', 'resnet101_custom'])
+    parser.add_argument('--backbone', type=str, default='resnet101_custom', choices=['vgg16', 'resnet50', 'resnet101', 'resnet101_custom'])
     args = parser.parse_args()
     Logger.initialize(args, training=True)
 
@@ -80,17 +119,17 @@ if __name__ == '__main__':
 
     # Dataset initialization
     FSSDataset.initialize(img_size=400, datapath=args.datapath, use_original_imgsize=False)
-    dataloader_trn = FSSDataset.build_dataloader(args.benchmark, args.bsz, args.nworker, args.fold, 'trn')
-    dataloader_val = FSSDataset.build_dataloader(args.benchmark, args.bsz, args.nworker, args.fold, 'val')
+    dataloader_trn = FSSDataset.build_dataloader(args.benchmark, args.bsz, args.nworker, args.fold, 'trn', shot=args.nwshot)
+    dataloader_val = FSSDataset.build_dataloader(args.benchmark, args.bsz, args.nworker, args.fold, 'val', shot=args.nwshot)
 
     # Train HSNet
     best_val_miou = float('-inf')
     best_val_loss = float('inf')
     for epoch in range(args.niter):
 
-        trn_loss, trn_miou, trn_fb_iou = train(epoch, model, dataloader_trn, optimizer, training=True)
+        trn_loss, trn_miou, trn_fb_iou = train(epoch, model, dataloader_trn, new_optimizer, training=True, shot=args.nwshot)
         with torch.no_grad():
-            val_loss, val_miou, val_fb_iou = train(epoch, model, dataloader_val, optimizer, training=False)
+            val_loss, val_miou, val_fb_iou = train(epoch, model, dataloader_val, new_optimizer, training=False, shot=args.nwshot)
 
         # Save the best model
         if val_miou > best_val_miou:

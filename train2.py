@@ -26,6 +26,8 @@ def train(epoch, model, dataloader, optimizer, training):
         batch = utils.to_cuda(batch)
         logit_mask = model(batch['query_img'], batch['support_imgs'].squeeze(1), batch['support_masks'].squeeze(1))
         pred_mask = logit_mask.argmax(dim=1)
+        print("logit_mask", logit_mask.shape)
+        print("pred_mask", pred_mask[0])
 
         # 2. Compute loss & update model parameters
         loss = model.module.compute_objective(logit_mask, batch['query_mask'])
@@ -53,7 +55,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Hypercorrelation Squeeze Pytorch Implementation')
     parser.add_argument('--datapath', type=str, default='../Datasets_HSN')
     parser.add_argument('--benchmark', type=str, default='custom', choices=['pascal', 'coco', 'fss', 'custom'])
-    parser.add_argument('--logpath', type=str, default='newdata_oldweight_2')
+    parser.add_argument('--logpath', type=str, default='newD_oldW_trans_5shot')
     parser.add_argument('--bsz', type=int, default=4)
     parser.add_argument('--lr', type=float, default=1e-3)
     parser.add_argument('--niter', type=int, default=2000)
@@ -80,8 +82,8 @@ if __name__ == '__main__':
 
     # Dataset initialization
     FSSDataset.initialize(img_size=400, datapath=args.datapath, use_original_imgsize=False)
-    dataloader_trn = FSSDataset.build_dataloader(args.benchmark, args.bsz, args.nworker, args.fold, 'trn')
-    dataloader_val = FSSDataset.build_dataloader(args.benchmark, args.bsz, args.nworker, args.fold, 'val')
+    dataloader_trn = FSSDataset.build_dataloader(args.benchmark, args.bsz, args.nworker, args.fold, 'trn', 1)
+    dataloader_val = FSSDataset.build_dataloader(args.benchmark, args.bsz, args.nworker, args.fold, 'val', 1)
 
     # Train HSNet
     best_val_miou = float('-inf')

@@ -113,13 +113,13 @@ class Logger:
         logging.info(msg)
 
     @classmethod
-    def save_model_miou(cls, model, epoch, val_miou):
-        torch.save(model.state_dict(), os.path.join(cls.logpath, 'best_model.pt'))
+    def save_model_miou(cls, model, epoch, val_miou, ver="def"):
+        torch.save(model.state_dict(), os.path.join(cls.logpath, 'best_model_'+ver+'.pt'))
         cls.info('Model saved @%d w/ val. mIoU: %5.2f.\n' % (epoch, val_miou))
     
     @classmethod
-    def save_model_event(cls, model, epoch, val_miou):
-        torch.save(model.state_dict(), os.path.join(cls.logpath, 'best_model_epoch'+str(epoch)+'_miou'+np.array2string(val_miou.cpu().detach().numpy())+'.pt'))
+    def save_model_event(cls, model, epoch, val_miou, ver="def"):
+        torch.save(model.state_dict(), os.path.join(cls.logpath, 'best_model_epoch'+str(epoch)+'_miou_'+ver+np.array2string(val_miou.cpu().detach().numpy())+'.pt'))
 
     @classmethod
     def log_params(cls, model):
