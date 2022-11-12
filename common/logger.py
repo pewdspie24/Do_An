@@ -76,12 +76,15 @@ class AverageMeter:
 class Logger:
     r""" Writes evaluation results of training/testing """
     @classmethod
-    def initialize(cls, args, training):
+    def initialize(cls, args, training, colab=False):
         logtime = datetime.datetime.now().__format__('_%m%d_%H%M%S')
         logpath = args.logpath if training else '_TEST_' + args.load.split('/')[-2].split('.')[0] + logtime
         if logpath == '': logpath = logtime
 
-        cls.logpath = os.path.join('logs', logpath + '.log')
+        if colab:
+            cls.logpath = logpath+'.log'
+        else:
+            cls.logpath = os.path.join('logs', logpath + '.log')
         cls.benchmark = args.benchmark
         os.makedirs(cls.logpath, exist_ok=True)
 
