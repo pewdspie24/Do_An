@@ -101,11 +101,12 @@ if __name__ == '__main__':
     parser.add_argument('--fold', type=int, default=0, choices=[0, 1, 2, 3])
     parser.add_argument('--backbone', type=str, default='resnet101', choices=['vgg16', 'resnet50', 'resnet101', 'resnet101_custom'])
     parser.add_argument('--resume', type=bool, default=False)
+    parser.add_argument('--colab', type=bool, default=False)
     args = parser.parse_args()
     Logger.initialize(args, training=True)
 
     # Model initialization
-    model = HypercorrSqueezeNetwork(args.backbone, False)
+    model = HypercorrSqueezeNetwork(args.backbone, False, colab = args.colab)
     Logger.log_params(model)
 
     # Device setup
