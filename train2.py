@@ -103,10 +103,10 @@ if __name__ == '__main__':
     parser.add_argument('--resume', type=bool, default=False)
     parser.add_argument('--colab', type=bool, default=False)
     args = parser.parse_args()
-    Logger.initialize(args, training=True)
+    Logger.initialize(args, training=True, colab = args.colab)
 
     # Model initialization
-    model = HypercorrSqueezeNetwork(args.backbone, False, colab = args.colab)
+    model = HypercorrSqueezeNetwork(args.backbone, False)
     Logger.log_params(model)
 
     # Device setup
