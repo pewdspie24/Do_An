@@ -14,7 +14,7 @@ from .base.correlation import Correlation
 from .learner import HPNLearner
 
 
-class HypercorrSqueezeNetwork(nn.Module):
+class SDHypercorrSqueezeNetwork(nn.Module):
     def __init__(self, backbone, use_original_imgsize):
         super(HypercorrSqueezeNetwork, self).__init__()
 

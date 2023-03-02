@@ -23,7 +23,7 @@ class Visualizer:
         cls.mean_img = [0.485, 0.456, 0.406]
         cls.std_img = [0.229, 0.224, 0.225]
         cls.to_pil = transforms.ToPILImage()
-        cls.vis_path = './vis/'
+        cls.vis_path = './vis_final_time/'
         if not os.path.exists(cls.vis_path): os.makedirs(cls.vis_path)
 
     @classmethod

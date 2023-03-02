@@ -92,15 +92,15 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Hypercorrelation Squeeze Pytorch Implementation')
     parser.add_argument('--datapath', type=str, default='../Datasets_HSN')
     parser.add_argument('--benchmark', type=str, default='custom', choices=['pascal', 'coco', 'fss', 'custom'])
-    parser.add_argument('--logpath', type=str, default='newD_oldW_trans_5shot')
+    parser.add_argument('--logpath', type=str, default='newD_oldW_trans_5shot_5e-3_v2s')
     parser.add_argument('--bsz', type=int, default=2)
-    parser.add_argument('--lr', type=float, default=1e-3)
+    parser.add_argument('--lr', type=float, default=5e-3)
     parser.add_argument('--niter', type=int, default=2000)
     parser.add_argument('--nworker', type=int, default=2)
     parser.add_argument('--nwshot', type=int, default=3)
-    parser.add_argument('--fold', type=int, default=0, choices=[0, 1, 2, 3])
+    parser.add_argument('--fold', type=int, default=0, choices=[0, 1, 2, 3])    
     parser.add_argument('--backbone', type=str, default='resnet101', choices=['vgg16', 'resnet50', 'resnet101', 'resnet101_custom'])
-    parser.add_argument('--resume', type=bool, default=False)
+    parser.add_argument('--resume', type=bool, default=True)
     parser.add_argument('--colab', type=bool, default=False)
     args = parser.parse_args()
     Logger.initialize(args, training=True, colab = args.colab)
@@ -130,7 +130,8 @@ if __name__ == '__main__':
         # new_optimizer.load_state_dict(checkpoint['optimizer_state_dict'])   
         # lr_scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
         # init_eps = checkpoint['epoch']
-        model.load_state_dict(torch.load(os.path.join(args.logpath, "best_model.pt")))
+        model.load_state_dict(torch.load("logs/"+os.path.join(args.logpath+".log", "best_model.pt")))
+        init_eps = 74
     Evaluator.initialize()
 
     # Dataset initialization
@@ -151,7 +152,7 @@ if __name__ == '__main__':
         if val_miou > best_val_miou:
             best_val_miou = val_miou
             Logger.save_model_miou(model, epoch, val_miou, new_optimizer, lr_scheduler)
-        if epoch%25==0:
+        if (epoch+1)%10==0:
             Logger.save_model_event(model, epoch, val_miou)
 
         Logger.tbd_writer.add_scalars('data/loss', {'trn_loss': trn_loss, 'val_loss': val_loss}, epoch)
